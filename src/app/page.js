@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import AddressSearch from '@/components/AddressSearch'
-import MapBackground from '@/components/MapBackground'
+import AddressSearch from '../components/AddressSearch'
+import MapBackground from '../components/MapBackground'
 
 export default function Home() {
   // Default to Frederick, MD coordinates
