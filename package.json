@@ -9,8 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@esri/arcgis-rest-feature-layer": "^4.1.1",
-    "@esri/arcgis-rest-request": "^4.1.1",
+   "@esri/arcgis-rest-feature-layer": "latest",
+"@esri/arcgis-rest-request": "latest",
     "clsx": "^2.1.0",
     "lucide-react": "^0.300.0",
     "mapbox-gl": "^3.1.2",
