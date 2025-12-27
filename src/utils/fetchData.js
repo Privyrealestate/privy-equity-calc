@@ -5,14 +5,14 @@ const MD_PARCEL_LAYER = "https://geodata.md.gov/imap/rest/services/PlanningCadas
 
 export async function getPropertyData(lat, lng) {
   try {
-    // 1. Ask Maryland: "What parcel is NEAR these coordinates?"
+    // 1. Ask Maryland: "What parcel is WITHIN 50 METERS of these coordinates?"
     const response = await queryFeatures({
       url: MD_PARCEL_LAYER,
       geometry: { x: lng, y: lat },
       geometryType: "esriGeometryPoint",
       spatialRel: "esriSpatialRelIntersects",
       inSR: "4326", // Lat/Long format
-      distance: 25, // <--- THE FIX: Look within 25 meters (approx 80ft) of the point
+      distance: 50, // <--- THE FIX: Look within 50 meters (approx 160ft) of the point
       units: "esriSRUnit_Meter",
       outFields: ["ACCTID", "ADDRESS", "OWNNAME1", "NFMTTLVL", "ASSDLAND", "ASSDIMPR", "LZN", "MORTGAG1", "TRADATE"],
       returnGeometry: false,
