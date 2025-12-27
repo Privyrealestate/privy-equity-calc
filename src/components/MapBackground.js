@@ -14,7 +14,13 @@ export default function MapBackground({ coordinates }) {
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
 
     if (map.current) {
-      map.current.flyTo({ center: coordinates, zoom: 16 })
+      map.current.flyTo({
+        center: coordinates,
+        zoom: 16,
+        pitch: 60,
+        bearing: 0,
+        essential: true
+      })
       return
     }
 
@@ -23,6 +29,8 @@ export default function MapBackground({ coordinates }) {
       style: 'mapbox://styles/mapbox/satellite-v9',
       center: coordinates,
       zoom: 16,
+      pitch: 60,
+      interactive: false,
       attributionControl: false
     })
 
@@ -31,8 +39,7 @@ export default function MapBackground({ coordinates }) {
   return (
     <div 
       ref={mapContainer} 
-      className="fixed inset-0 w-full h-full border-4 border-red-500 z-0"
-      style={{ minHeight: '100vh', background: 'gray' }}
+      className="fixed inset-0 w-full h-full z-0"
     />
   )
 }
