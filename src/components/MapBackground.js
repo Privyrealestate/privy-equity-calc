@@ -39,7 +39,7 @@ export default function MapBackground({ coordinates }) {
   return (
     <div 
       ref={mapContainer} 
-      className="fixed inset-0 w-full h-full z-0"
+      className="fixed top-0 left-0 w-screen h-screen z-[-1]"
     />
   )
 }
