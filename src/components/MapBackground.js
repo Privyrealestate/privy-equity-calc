@@ -14,25 +14,15 @@ export default function MapBackground({ coordinates }) {
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
 
     if (map.current) {
-      // Fly to new location if map exists
-      map.current.flyTo({
-        center: coordinates,
-        zoom: 16,
-        pitch: 60, // 3D Tilt effect
-        bearing: 0,
-        essential: true
-      })
+      map.current.flyTo({ center: coordinates, zoom: 16 })
       return
     }
 
-    // Initialize Map
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/satellite-v9', // Satellite View
+      style: 'mapbox://styles/mapbox/satellite-v9',
       center: coordinates,
       zoom: 16,
-      pitch: 60,
-      interactive: false, // Keep it static/background only for vibe
       attributionControl: false
     })
 
@@ -41,7 +31,8 @@ export default function MapBackground({ coordinates }) {
   return (
     <div 
       ref={mapContainer} 
-      className="fixed inset-0 w-full h-full opacity-40 mix-blend-multiply transition-opacity duration-1000"
+      className="fixed inset-0 w-full h-full border-4 border-red-500 z-0"
+      style={{ minHeight: '100vh', background: 'gray' }}
     />
   )
 }
