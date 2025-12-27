@@ -2,18 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 10, 41, 30;
-  --background-start-rgb: 242, 240, 236;
-  --background-end-rgb: 242, 240, 236;
+/* Force transparent background so the Map shows through */
+body {
+  background: transparent;
+  color: #0A291E; /* Privy Dominion */
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+/* Ensure the map container stays behind everything */
+.mapboxgl-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
 }
