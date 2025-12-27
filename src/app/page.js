@@ -25,7 +25,7 @@ export default function Home() {
         
         {/* Brand Card - pointer-events-auto lets you select text here */}
         <div className="pointer-events-auto text-center space-y-4 bg-privy-ledger/90 p-10 rounded-2xl shadow-2xl border border-privy-dominion/5 backdrop-blur-xl max-w-2xl w-full animate-in fade-in zoom-in duration-700">
-          <h1 className="font-serif text-6xl text-privy-dominion tracking-tight">
+          <h1 className="font-sans text-5xl md:text-7xl font-bold text-privy-dominion tracking-[0.2em] uppercase">
             privy
           </h1>
           <p className="text-privy-dominion/60 font-mono text-xs tracking-[0.3em] uppercase">
