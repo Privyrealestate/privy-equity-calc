@@ -30,7 +30,7 @@ export default function MapBackground({ coordinates }) {
       center: coordinates,
       zoom: 16,
       pitch: 60,
-      interactive: false,
+      interactive: true, // UNLOCKED: You can now drag and zoom
       attributionControl: false
     })
 
@@ -39,7 +39,7 @@ export default function MapBackground({ coordinates }) {
   return (
     <div 
       ref={mapContainer} 
-      className="fixed top-0 left-0 w-screen h-screen z-[-1]"
+      className="fixed top-0 left-0 w-full h-full z-0"
     />
   )
 }
