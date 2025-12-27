@@ -11,6 +11,7 @@ export async function getPropertyData(lat, lng) {
       geometry: { x: lng, y: lat }, // Note: ArcGIS uses x=long, y=lat
       geometryType: "esriGeometryPoint",
       spatialRel: "esriSpatialRelIntersects",
+      inSR: "4326", // <--- CRITICAL FIX: Tells server "These are Lat/Long coordinates"
       outFields: ["ACCTID", "ADDRESS", "OWNNAME1", "NFMTTLVL", "ASSDLAND", "ASSDIMPR", "LZN", "MORTGAG1", "TRADATE"],
       returnGeometry: false,
       f: "json"
@@ -28,7 +29,7 @@ export async function getPropertyData(lat, lng) {
     return {
       taxId: data.ACCTID,
       address: data.ADDRESS,
-      owner: data.OWNNAME1, // We will mask this later for privacy
+      owner: data.OWNNAME1, 
       assessedValue: data.NFMTTLVL, // Total Assessed Value
       zoning: data.LZN, // Local Zoning Code
       lastSaleDate: data.TRADATE,
