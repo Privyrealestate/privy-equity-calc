@@ -12,21 +12,20 @@ export default function Home() {
   const handleSelect = (place) => {
     setSelectedProp(place)
     setCoordinates(place.center)
-    console.log("Selected:", place)
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-6 relative overflow-hidden bg-privy-ledger">
+    <main className="flex min-h-screen flex-col items-center justify-center p-6 relative overflow-hidden bg-privy-ledger/20">
       
-      {/* Background Map Layer */}
+      {/* Background Map Layer (z-0) */}
       <MapBackground coordinates={coordinates} />
 
-      {/* Content Layer */}
-      <div className="z-10 w-full max-w-5xl flex flex-col items-center gap-8 animate-in fade-in zoom-in duration-700">
+      {/* Content Layer (z-50) - Floating on top */}
+      <div className="relative z-50 w-full max-w-5xl flex flex-col items-center gap-8">
         
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <h1 className="font-serif text-5xl md:text-7xl text-privy-dominion">
+        {/* Brand Header with Glass Effect */}
+        <div className="text-center space-y-4 bg-privy-ledger/80 p-8 rounded-2xl backdrop-blur-md border border-privy-dominion/10 shadow-2xl">
+          <h1 className="font-serif text-6xl text-privy-dominion tracking-tight">
             privy
           </h1>
           <p className="text-privy-dominion/80 font-mono text-xs tracking-[0.3em] uppercase">
@@ -35,16 +34,10 @@ export default function Home() {
         </div>
 
         {/* Search Interface */}
-        <div className="w-full max-w-xl shadow-2xl shadow-privy-dominion/10">
+        <div className="w-full max-w-xl shadow-2xl shadow-black/20">
           <AddressSearch onAddressSelect={handleSelect} />
         </div>
 
-        {/* Status Message */}
-        {!selectedProp && (
-          <p className="text-privy-dominion/60 font-sans text-sm max-w-md text-center">
-            Enter your address to begin the forensic audit of your property value.
-          </p>
-        )}
       </div>
     </main>
   )
