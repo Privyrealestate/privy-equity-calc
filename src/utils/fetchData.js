@@ -5,15 +5,21 @@ const MD_PARCEL_LAYER = "https://geodata.md.gov/imap/rest/services/PlanningCadas
 
 export async function getPropertyData(lat, lng) {
   try {
-    // 1. Ask Maryland: "What parcel is WITHIN 50 METERS of these coordinates?"
+    // STRATEGY: The "Search Box" (Envelope)
+    // We create a square ~100 meters around the point to catch the property line.
+    const offset = 0.001; 
+    
     const response = await queryFeatures({
       url: MD_PARCEL_LAYER,
-      geometry: { x: lng, y: lat },
-      geometryType: "esriGeometryPoint",
+      geometry: {
+        xmin: lng - offset,
+        ymin: lat - offset,
+        xmax: lng + offset,
+        ymax: lat + offset,
+        spatialReference: { wkid: 4326 }
+      },
+      geometryType: "esriGeometryEnvelope",
       spatialRel: "esriSpatialRelIntersects",
-      inSR: "4326", // Lat/Long format
-      distance: 50, // <--- THE FIX: Look within 50 meters (approx 160ft) of the point
-      units: "esriSRUnit_Meter",
       outFields: ["ACCTID", "ADDRESS", "OWNNAME1", "NFMTTLVL", "ASSDLAND", "ASSDIMPR", "LZN", "MORTGAG1", "TRADATE"],
       returnGeometry: false,
       f: "json"
@@ -21,7 +27,7 @@ export async function getPropertyData(lat, lng) {
 
     // 2. Did we find anything?
     if (!response.features || response.features.length === 0) {
-      console.warn("No parcel found at location.");
+      console.warn("No parcel found in search box.");
       return null;
     }
 
