@@ -11,10 +11,10 @@ export async function GET(request) {
   // --- THE SIMPLIFIED MATCHING LOGIC ---
   // 1. Clean the input (Upper case, remove commas)
   // Input: "20433 Trovinger Mill Road, Hagerstown, MD..."
-  const cleanString = addressQuery.toUpperCase().replace(/,/g, '');
+  const cleanString = addressQuery.toUpperCase().replace(/,/g, ' '); // Replace commas with spaces
   
-  // 2. Split into words
-  // ["20433", "TROVINGER", "MILL", "ROAD", "HAGERSTOWN"...]
+  // 2. Split into words and remove empty spaces
+  // Result: ["20433", "TROVINGER", "MILL", "ROAD", "HAGERSTOWN"...]
   const parts = cleanString.split(' ').filter(part => part.trim().length > 0);
 
   // 3. The "Two-Key" System
