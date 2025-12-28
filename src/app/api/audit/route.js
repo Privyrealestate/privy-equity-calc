@@ -2,28 +2,39 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  
-  // We now accept 'address' instead of lat/lng
   const addressQuery = searchParams.get('address'); 
 
   if (!addressQuery) {
     return NextResponse.json({ error: 'Missing address' }, { status: 400 });
   }
 
-  // CLEAN THE ADDRESS
-  // Mapbox gives "20433 Trovinger Mill Road, Hagerstown..."
-  // Maryland stores "20433 TROVINGER MILL RD"
-  // We grab the first part (Number + Street Name) to be safe.
-  const cleanAddress = addressQuery.split(',')[0].toUpperCase(); 
+  // --- THE CLEANING PROCESS ---
+  // 1. Get the first part (e.g., "20433 Trovinger Mill Road") and uppercase it
+  let cleanAddress = addressQuery.split(',')[0].toUpperCase();
 
-  console.log("Searching Maryland DB for:", cleanAddress);
+  // 2. Remove the "Suffix Killers"
+  // We delete "ROAD", "STREET", etc. so "RD" vs "ROAD" doesn't matter.
+  const suffixes = ["ROAD", "STREET", "AVENUE", "DRIVE", "LANE", "COURT", "CIRCLE", "PIKE", "BOULEVARD", "WAY"];
+  suffixes.forEach(suffix => {
+    // Replace full word with empty string (e.g. " ROAD" -> "")
+    cleanAddress = cleanAddress.replace(new RegExp(`\\b${suffix}\\b`, 'g'), '');
+  });
+
+  // 3. Trim extra whitespace
+  cleanAddress = cleanAddress.trim();
+
+  // 4. Inject Wildcards
+  // "20433 TROVINGER MILL" becomes "20433%TROVINGER%MILL%"
+  // This tells SQL: "Match these words in this order, regardless of spacing or abbreviation"
+  const fuzzyQuery = cleanAddress.replace(/\s+/g, '%') + '%';
+
+  console.log("Searching Maryland DB for:", fuzzyQuery);
 
   const baseUrl = "https://geodata.md.gov/imap/rest/services/PlanningCadastre/MD_PropertyData/MapServer/0/query";
   
-  // SQL QUERY: Find any record that *starts with* our address string
   const params = new URLSearchParams({
     f: "json",
-    where: `ADDRESS LIKE '${cleanAddress}%'`, // The Magic Switch
+    where: `ADDRESS LIKE '${fuzzyQuery}'`, // <--- The Fuzzy Search
     outFields: "ACCTID,ADDRESS,OWNNAME1,NFMTTLVL,ASSDLAND,ASSDIMPR,LZN,MORTGAG1,TRADATE",
     returnGeometry: "false"
   });
