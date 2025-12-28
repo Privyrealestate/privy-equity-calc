@@ -2,31 +2,30 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const lat = searchParams.get('lat');
-  const lng = searchParams.get('lng');
+  
+  // We now accept 'address' instead of lat/lng
+  const addressQuery = searchParams.get('address'); 
 
-  if (!lat || !lng) {
-    return NextResponse.json({ error: 'Missing coordinates' }, { status: 400 });
+  if (!addressQuery) {
+    return NextResponse.json({ error: 'Missing address' }, { status: 400 });
   }
 
-  // 1. SETUP: Create the "Search Box" (Envelope)
-  // 0.002 degrees is roughly 200 meters. A good wide net.
-  const offset = 0.002;
-  const xmin = parseFloat(lng) - offset;
-  const ymin = parseFloat(lat) - offset;
-  const xmax = parseFloat(lng) + offset;
-  const ymax = parseFloat(lat) + offset;
+  // CLEAN THE ADDRESS
+  // Mapbox gives "20433 Trovinger Mill Road, Hagerstown..."
+  // Maryland stores "20433 TROVINGER MILL RD"
+  // We grab the first part (Number + Street Name) to be safe.
+  const cleanAddress = addressQuery.split(',')[0].toUpperCase(); 
 
-  // 2. RAW FETCH: Talk to Maryland Server
+  console.log("Searching Maryland DB for:", cleanAddress);
+
   const baseUrl = "https://geodata.md.gov/imap/rest/services/PlanningCadastre/MD_PropertyData/MapServer/0/query";
+  
+  // SQL QUERY: Find any record that *starts with* our address string
   const params = new URLSearchParams({
     f: "json",
-    returnGeometry: "false",
-    spatialRel: "esriSpatialRelIntersects",
-    geometryType: "esriGeometryEnvelope",
-    geometry: `${xmin},${ymin},${xmax},${ymax}`,
-    inSR: "4326",
-    outFields: "ACCTID,ADDRESS,OWNNAME1,NFMTTLVL,ASSDLAND,ASSDIMPR,LZN,MORTGAG1,TRADATE"
+    where: `ADDRESS LIKE '${cleanAddress}%'`, // The Magic Switch
+    outFields: "ACCTID,ADDRESS,OWNNAME1,NFMTTLVL,ASSDLAND,ASSDIMPR,LZN,MORTGAG1,TRADATE",
+    returnGeometry: "false"
   });
 
   try {
@@ -38,12 +37,10 @@ export async function GET(request) {
 
     const json = await res.json();
 
-    // 3. CHECK RESULTS
     if (!json.features || json.features.length === 0) {
-      return NextResponse.json({ error: 'No properties found in this location.' }, { status: 404 });
+      return NextResponse.json({ error: 'Property not found in State Records.' }, { status: 404 });
     }
 
-    // 4. RETURN SUCCESS
     const data = json.features[0].attributes;
     return NextResponse.json({
       taxId: data.ACCTID,
