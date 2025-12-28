@@ -10,6 +10,7 @@ export async function GET(request) {
 
   // --- STEP 1: PARSE INPUT ---
   // Input: "20433 Trovinger Mill Road..."
+  // We split by spaces or commas to get the raw words
   const parts = addressQuery.toUpperCase().split(/[\s,]+/).filter(Boolean);
 
   if (parts.length < 2) {
@@ -19,24 +20,27 @@ export async function GET(request) {
   const houseNumber = parts[0];
   const streetName = parts[1];
 
-  // --- STEP 2: HEX ENCODING (THE FIX) ---
-  // We cannot use literal spaces ' ' or literal percents '%' because fetch() gets confused.
-  // We must use "Hex Speak":
-  // %25 = The symbol "%"
-  // %20 = The symbol " " (Space)
-  // %27 = The symbol "'" (Single Quote)
-  
-  // We want to build:  '%20433 TROVINGER%'
-  // Hex Encoded:      %27%2520433%20TROVINGER%25%27
-  
-  const sqlValue = `%27%25${houseNumber}%20${streetName}%25%27`;
+  // --- STEP 2: CONSTRUCT SQL ---
+  // We want: ADDRESS LIKE '20433 TROVINGER%'
+  // 1. We start with the number.
+  // 2. We add ONE space.
+  // 3. We add the first street name.
+  // 4. We add ONE wildcard (%) at the end to catch "RD", "ST", "MILL RD", etc.
+  // CRITICAL: We REMOVED the leading wildcard. It is unnecessary and risky.
+  const sqlWhere = `ADDRESS LIKE '${houseNumber} ${streetName}%'`;
+
+  // --- STEP 3: BROWSER-STANDARD ENCODING ---
+  // instead of manual hex codes, we let JS handle the math.
+  // This turns spaces into %20 and % into %25 automatically.
+  const encodedWhere = encodeURIComponent(sqlWhere);
 
   const baseUrl = "https://geodata.md.gov/imap/rest/services/PlanningCadastre/MD_PropertyData/MapServer/0/query";
 
-  // We stitch the URL manually using the Hex Codes
-  const finalUrl = `${baseUrl}?f=json&returnGeometry=false&outFields=ACCTID,ADDRESS,OWNNAME1,NFMTTLVL,ASSDLAND,ASSDIMPR,LZN,MORTGAG1,TRADATE&where=ADDRESS%20LIKE%20${sqlValue}`;
+  // We stitch it together. 
+  // Note: We use &variable=value format standard for APIs.
+  const finalUrl = `${baseUrl}?f=json&returnGeometry=false&outFields=ACCTID,ADDRESS,OWNNAME1,NFMTTLVL,ASSDLAND,ASSDIMPR,LZN,MORTGAG1,TRADATE&where=${encodedWhere}`;
 
-  console.log("EXECUTE HEX URL:", finalUrl);
+  console.log("EXECUTE URL:", finalUrl);
 
   try {
     const res = await fetch(finalUrl, { cache: 'no-store' });
@@ -48,7 +52,8 @@ export async function GET(request) {
     const json = await res.json();
 
     if (!json.features || json.features.length === 0) {
-      return NextResponse.json({ error: `Not found. Searched for: ${houseNumber} ${streetName}` }, { status: 404 });
+      // Debug info in the error so we know what failed
+      return NextResponse.json({ error: `Not found. SQL tried: ${sqlWhere}` }, { status: 404 });
     }
 
     const data = json.features[0].attributes;
