@@ -8,25 +8,31 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Missing address' }, { status: 400 });
   }
 
-  // --- THE CLEANING PROCESS ---
-  // 1. Get the first part (e.g., "20433 Trovinger Mill Road") and uppercase it
-  let cleanAddress = addressQuery.split(',')[0].toUpperCase();
+  // --- THE SIMPLIFIED MATCHING LOGIC ---
+  // 1. Clean the input (Upper case, remove commas)
+  // Input: "20433 Trovinger Mill Road, Hagerstown, MD..."
+  const cleanString = addressQuery.toUpperCase().replace(/,/g, '');
+  
+  // 2. Split into words
+  // ["20433", "TROVINGER", "MILL", "ROAD", "HAGERSTOWN"...]
+  const parts = cleanString.split(' ').filter(part => part.trim().length > 0);
 
-  // 2. Remove the "Suffix Killers"
-  // We delete "ROAD", "STREET", etc. so "RD" vs "ROAD" doesn't matter.
-  const suffixes = ["ROAD", "STREET", "AVENUE", "DRIVE", "LANE", "COURT", "CIRCLE", "PIKE", "BOULEVARD", "WAY"];
-  suffixes.forEach(suffix => {
-    // Replace full word with empty string (e.g. " ROAD" -> "")
-    cleanAddress = cleanAddress.replace(new RegExp(`\\b${suffix}\\b`, 'g'), '');
-  });
+  // 3. The "Two-Key" System
+  // We only take the first two parts: The Number and the First Name.
+  // This avoids issues with "Road" vs "Rd" or "Mill" vs "Mills".
+  const houseNumber = parts[0];
+  const streetName = parts[1];
 
-  // 3. Trim extra whitespace
-  cleanAddress = cleanAddress.trim();
+  // Safety Check: ensure we actually have two parts
+  if (!houseNumber || !streetName) {
+    return NextResponse.json({ error: 'Invalid address format' }, { status: 400 });
+  }
 
-  // 4. Inject Wildcards
-  // "20433 TROVINGER MILL" becomes "20433%TROVINGER%MILL%"
-  // This tells SQL: "Match these words in this order, regardless of spacing or abbreviation"
-  const fuzzyQuery = cleanAddress.replace(/\s+/g, '%') + '%';
+  // 4. Construct the "Loose" Query
+  // Search for: "%20433%TROVINGER%"
+  // The leading % handles any weird prefixes.
+  // The middle % handles any spaces or missing words.
+  const fuzzyQuery = `%${houseNumber}%${streetName}%`;
 
   console.log("Searching Maryland DB for:", fuzzyQuery);
 
@@ -34,7 +40,7 @@ export async function GET(request) {
   
   const params = new URLSearchParams({
     f: "json",
-    where: `ADDRESS LIKE '${fuzzyQuery}'`, // <--- The Fuzzy Search
+    where: `ADDRESS LIKE '${fuzzyQuery}'`, // <--- The Broadest Possible Search
     outFields: "ACCTID,ADDRESS,OWNNAME1,NFMTTLVL,ASSDLAND,ASSDIMPR,LZN,MORTGAG1,TRADATE",
     returnGeometry: "false"
   });
@@ -49,9 +55,11 @@ export async function GET(request) {
     const json = await res.json();
 
     if (!json.features || json.features.length === 0) {
+      console.log("Zero results found for:", fuzzyQuery);
       return NextResponse.json({ error: 'Property not found in State Records.' }, { status: 404 });
     }
 
+    // SUCCESS: We found it!
     const data = json.features[0].attributes;
     return NextResponse.json({
       taxId: data.ACCTID,
