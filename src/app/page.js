@@ -9,7 +9,7 @@ export default function Home() {
   const [selectedProp, setSelectedProp] = useState(null)
   const [propertyData, setPropertyData] = useState(null) 
   const [loading, setLoading] = useState(false)
-  const [errorMsg, setErrorMsg] = useState(null) // New Error State
+  const [errorMsg, setErrorMsg] = useState(null) 
 
   const handleSelect = async (place) => {
     setSelectedProp(place)
@@ -19,9 +19,8 @@ export default function Home() {
     setErrorMsg(null)
 
     try {
-      // CALL OUR INTERNAL PROXY (Bypasses Browser Security)
-      // Note: Mapbox gives [lng, lat], so center[1] is lat
-      const res = await fetch(`/api/audit?lat=${place.center[1]}&lng=${place.center[0]}`);
+      // THE FIX: We send the ADDRESS TEXT (place.place_name), not the coordinates.
+      const res = await fetch(`/api/audit?address=${encodeURIComponent(place.place_name)}`);
       const data = await res.json();
 
       if (data.error) {
@@ -58,11 +57,10 @@ export default function Home() {
 
           {loading && (
             <div className="pt-4 text-privy-vigilance font-mono text-sm animate-pulse">
-              SECURE LINK ESTABLISHED. AUDITING...
+              SEARCHING STATE RECORDS BY ADDRESS...
             </div>
           )}
 
-          {/* SUCCESS STATE */}
           {propertyData && !loading && (
             <div className="mt-6 p-4 bg-privy-dominion/5 rounded-lg border border-privy-dominion/10 text-left space-y-2 animate-in slide-in-from-bottom-2">
               <div className="flex justify-between border-b border-privy-dominion/10 pb-2">
@@ -84,7 +82,6 @@ export default function Home() {
             </div>
           )}
           
-          {/* ERROR STATE */}
           {errorMsg && !loading && (
             <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded text-red-600 font-mono text-xs">
               ⚠️ {errorMsg}
