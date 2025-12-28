@@ -8,39 +8,40 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Missing address' }, { status: 400 });
   }
 
-  // --- THE SIMPLIFIED MATCHING LOGIC ---
-  // 1. Clean the input (Upper case, remove commas)
-  // Input: "20433 Trovinger Mill Road, Hagerstown, MD..."
-  const cleanString = addressQuery.toUpperCase().replace(/,/g, ' '); // Replace commas with spaces
+  // --- THE "VERIFIED LINK" STRATEGY ---
+  // We are replicating the manual test that worked:
+  // query?where=ADDRESS+LIKE+'%20433 TROVINGER%'
+
+  // 1. Clean the input
+  // Input: "20433 Trovinger Mill Road, Hagerstown..."
+  const cleanString = addressQuery.toUpperCase().replace(/,/g, ' '); 
   
-  // 2. Split into words and remove empty spaces
-  // Result: ["20433", "TROVINGER", "MILL", "ROAD", "HAGERSTOWN"...]
+  // 2. Extract Parts
+  // ["20433", "TROVINGER", "MILL", "ROAD"...]
   const parts = cleanString.split(' ').filter(part => part.trim().length > 0);
 
-  // 3. The "Two-Key" System
-  // We only take the first two parts: The Number and the First Name.
-  // This avoids issues with "Road" vs "Rd" or "Mill" vs "Mills".
+  // 3. Build the "Golden Key"
+  // We want EXACTLY: "20433 TROVINGER"
   const houseNumber = parts[0];
   const streetName = parts[1];
 
-  // Safety Check: ensure we actually have two parts
   if (!houseNumber || !streetName) {
     return NextResponse.json({ error: 'Invalid address format' }, { status: 400 });
   }
 
-  // 4. Construct the "Loose" Query
-  // Search for: "%20433%TROVINGER%"
-  // The leading % handles any weird prefixes.
-  // The middle % handles any spaces or missing words.
-  const fuzzyQuery = `%${houseNumber}%${streetName}%`;
+  // 4. Construct the SQL
+  // The % at the start handles prefixes.
+  // The % at the end handles suffixes (Mill Rd, St, etc).
+  // CRITICAL: Only ONE space between number and name, just like the working link.
+  const sqlQuery = `%${houseNumber} ${streetName}%`;
 
-  console.log("Searching Maryland DB for:", fuzzyQuery);
+  console.log("Searching Maryland DB for:", sqlQuery);
 
   const baseUrl = "https://geodata.md.gov/imap/rest/services/PlanningCadastre/MD_PropertyData/MapServer/0/query";
   
   const params = new URLSearchParams({
     f: "json",
-    where: `ADDRESS LIKE '${fuzzyQuery}'`, // <--- The Broadest Possible Search
+    where: `ADDRESS LIKE '${sqlQuery}'`, // <--- The Exact Syntax that worked
     outFields: "ACCTID,ADDRESS,OWNNAME1,NFMTTLVL,ASSDLAND,ASSDIMPR,LZN,MORTGAG1,TRADATE",
     returnGeometry: "false"
   });
@@ -54,12 +55,13 @@ export async function GET(request) {
 
     const json = await res.json();
 
+    // ERROR CHECKING
     if (!json.features || json.features.length === 0) {
-      console.log("Zero results found for:", fuzzyQuery);
+      console.log("Zero results for:", sqlQuery);
       return NextResponse.json({ error: 'Property not found in State Records.' }, { status: 404 });
     }
 
-    // SUCCESS: We found it!
+    // SUCCESS
     const data = json.features[0].attributes;
     return NextResponse.json({
       taxId: data.ACCTID,
