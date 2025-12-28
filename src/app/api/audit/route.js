@@ -8,31 +8,35 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Missing address' }, { status: 400 });
   }
 
-  // --- STEP 1: PRECISE PARSING ---
-  // Use Regex to split by ANY non-word character (spaces, commas, tabs)
-  // This handles "20433, Trovinger" or "20433  Trovinger" perfectly.
+  // --- STEP 1: PARSE INPUT ---
+  // Input: "20433 Trovinger Mill Road..."
   const parts = addressQuery.toUpperCase().split(/[\s,]+/).filter(Boolean);
 
   if (parts.length < 2) {
     return NextResponse.json({ error: 'Address too short' }, { status: 400 });
   }
 
-  // We want EXACTLY: "20433 TROVINGER" (Number + First Name only)
   const houseNumber = parts[0];
   const streetName = parts[1];
 
-  // --- STEP 2: MANUAL URL CONSTRUCTION ---
-  // We build the SQL string exactly as it appeared in your successful browser test.
-  // We manually encode spaces as %20 and quotes as '
-  const sqlLike = `'%${houseNumber} ${streetName}%'`; // Result: '%20433 TROVINGER%'
+  // --- STEP 2: HEX ENCODING (THE FIX) ---
+  // We cannot use literal spaces ' ' or literal percents '%' because fetch() gets confused.
+  // We must use "Hex Speak":
+  // %25 = The symbol "%"
+  // %20 = The symbol " " (Space)
+  // %27 = The symbol "'" (Single Quote)
   
-  // Base URL
+  // We want to build:  '%20433 TROVINGER%'
+  // Hex Encoded:      %27%2520433%20TROVINGER%25%27
+  
+  const sqlValue = `%27%25${houseNumber}%20${streetName}%25%27`;
+
   const baseUrl = "https://geodata.md.gov/imap/rest/services/PlanningCadastre/MD_PropertyData/MapServer/0/query";
 
-  // We manually stitch the URL string to prevent "Double Encoding" issues
-  const finalUrl = `${baseUrl}?f=json&returnGeometry=false&outFields=ACCTID,ADDRESS,OWNNAME1,NFMTTLVL,ASSDLAND,ASSDIMPR,LZN,MORTGAG1,TRADATE&where=ADDRESS%20LIKE%20${sqlLike}`;
+  // We stitch the URL manually using the Hex Codes
+  const finalUrl = `${baseUrl}?f=json&returnGeometry=false&outFields=ACCTID,ADDRESS,OWNNAME1,NFMTTLVL,ASSDLAND,ASSDIMPR,LZN,MORTGAG1,TRADATE&where=ADDRESS%20LIKE%20${sqlValue}`;
 
-  console.log("EXECUTE MANUAL URL:", finalUrl);
+  console.log("EXECUTE HEX URL:", finalUrl);
 
   try {
     const res = await fetch(finalUrl, { cache: 'no-store' });
@@ -43,13 +47,10 @@ export async function GET(request) {
 
     const json = await res.json();
 
-    // ERROR CHECKING
     if (!json.features || json.features.length === 0) {
-      // DEBUG: We send the failed query back to you so we can see it
       return NextResponse.json({ error: `Not found. Searched for: ${houseNumber} ${streetName}` }, { status: 404 });
     }
 
-    // SUCCESS
     const data = json.features[0].attributes;
     return NextResponse.json({
       taxId: data.ACCTID,
