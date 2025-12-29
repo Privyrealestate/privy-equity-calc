@@ -9,8 +9,6 @@ export async function GET(request) {
   }
 
   // --- STEP 1: PARSE INPUT ---
-  // Input: "20433 Trovinger Mill Road..."
-  // We split by spaces or commas to get the raw words
   const parts = addressQuery.toUpperCase().split(/[\s,]+/).filter(Boolean);
 
   if (parts.length < 2) {
@@ -20,24 +18,18 @@ export async function GET(request) {
   const houseNumber = parts[0];
   const streetName = parts[1];
 
-  // --- STEP 2: CONSTRUCT SQL ---
-  // We want: ADDRESS LIKE '20433 TROVINGER%'
-  // 1. We start with the number.
-  // 2. We add ONE space.
-  // 3. We add the first street name.
-  // 4. We add ONE wildcard (%) at the end to catch "RD", "ST", "MILL RD", etc.
-  // CRITICAL: We REMOVED the leading wildcard. It is unnecessary and risky.
-  const sqlWhere = `ADDRESS LIKE '${houseNumber} ${streetName}%'`;
+  // --- STEP 2: CONSTRUCT SQL (THE FIX) ---
+  // We are restoring the leading '%' which makes the query match:
+  // " 20433 TROVINGER..." (Leading Space)
+  // "020433 TROVINGER..." (Zero Padding)
+  // The working browser link had this %, so we MUST include it.
+  const sqlWhere = `ADDRESS LIKE '%${houseNumber} ${streetName}%'`;
 
   // --- STEP 3: BROWSER-STANDARD ENCODING ---
-  // instead of manual hex codes, we let JS handle the math.
-  // This turns spaces into %20 and % into %25 automatically.
   const encodedWhere = encodeURIComponent(sqlWhere);
 
   const baseUrl = "https://geodata.md.gov/imap/rest/services/PlanningCadastre/MD_PropertyData/MapServer/0/query";
 
-  // We stitch it together. 
-  // Note: We use &variable=value format standard for APIs.
   const finalUrl = `${baseUrl}?f=json&returnGeometry=false&outFields=ACCTID,ADDRESS,OWNNAME1,NFMTTLVL,ASSDLAND,ASSDIMPR,LZN,MORTGAG1,TRADATE&where=${encodedWhere}`;
 
   console.log("EXECUTE URL:", finalUrl);
@@ -52,7 +44,6 @@ export async function GET(request) {
     const json = await res.json();
 
     if (!json.features || json.features.length === 0) {
-      // Debug info in the error so we know what failed
       return NextResponse.json({ error: `Not found. SQL tried: ${sqlWhere}` }, { status: 404 });
     }
 
